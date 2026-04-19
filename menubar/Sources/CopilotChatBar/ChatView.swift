@@ -77,6 +77,7 @@ struct ChatView: View {
 // MARK: - Bubble
 
 private struct MessageBubble: View {
+    @EnvironmentObject var settings: Settings
     let msg: ChatMessage
 
     var body: some View {
@@ -94,19 +95,22 @@ private struct MessageBubble: View {
             .frame(maxWidth: 280, alignment: .leading)
             .glassEffect(
                 .regular.tint(tint).interactive(),
-                in: RoundedRectangle(cornerRadius: 16)
+                in: RoundedRectangle(cornerRadius: settings.bubbleCornerRadius)
             )
             if msg.role == .assistant { Spacer(minLength: 40) }
         }
     }
 
     private var tint: Color {
-        switch (msg.role, msg.kind) {
-        case (.user, _):        return .green.opacity(0.35)
-        case (_, .question):    return .orange.opacity(0.35)
-        case (_, .update):      return .gray.opacity(0.20)
-        case (.assistant, _):   return .blue.opacity(0.30)
-        }
+        let roleStr = msg.role == .user ? "user" : "assistant"
+        let kindStr: String = {
+            switch msg.kind {
+            case .question: return "question"
+            case .update:   return "update"
+            case .normal:   return "normal"
+            }
+        }()
+        return settings.bubbleTint(role: roleStr, kind: kindStr)
     }
 
     @ViewBuilder private var metaLabel: some View {

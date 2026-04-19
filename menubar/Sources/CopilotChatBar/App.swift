@@ -20,9 +20,10 @@ struct CopilotChatBarApp {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate,
                          @preconcurrency UNUserNotificationCenterDelegate,
-                         NSPopoverDelegate {
+                         NSPopoverDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
+    private var chatWindow: NSWindow?
     private let model = ChatModel()
 
     func applicationDidFinishLaunching(_: Notification) {
@@ -75,14 +76,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate,
         }
     }
 
-    /// Used by the notification-click handler. Performs a real click
-    /// on the status button so AppKit resolves the popover anchor the
-    /// same way it does for a user click — otherwise the popover ends
-    /// up floating at the top-left of the screen after the app becomes
-    /// active from the background.
+    /// Used by the notification-click handler. Opens the chat as a
+    /// standalone floating window instead of a popover — this works
+    /// reliably regardless of whether the status bar button has been
+    /// laid out yet after the app activates from the background.
     func showPopover() {
-        guard let button = statusItem?.button, !popover.isShown else { return }
-        button.performClick(nil)
+        showChatWindow()
+    }
+
+    private func showChatWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+
+        if let w = chatWindow {
+            w.makeKeyAndOrderFront(nil)
+            model.markRead()
+            refreshIcon()
+            return
+        }
+
+        let host = NSHostingController(
+            rootView: RootView()
+                .environmentObject(model)
+                .environmentObject(Settings.shared)
+        )
+        let w = NSWindow(contentViewController: host)
+        w.title = "Copilot Chat"
+        w.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        w.titlebarAppearsTransparent = true
+        w.isMovableByWindowBackground = true
+        w.isReleasedWhenClosed = false
+        w.setContentSize(NSSize(width: 400, height: 560))
+        w.center()
+        w.level = .floating
+        w.delegate = self
+        chatWindow = w
+        w.makeKeyAndOrderFront(nil)
+        model.markRead()
+        refreshIcon()
     }
 
     // MARK: - Notifications
@@ -101,13 +131,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate,
                                 withCompletionHandler completionHandler:
                                     @escaping () -> Void) {
         if Settings.shared.openPopoverOnNotificationClick {
-            // Tiny delay so the status item finishes re-layout after the
-            // app becomes active; otherwise the popover can attach to a
-            // stale button frame and appear in the wrong spot.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
-                self?.showPopover()
+            DispatchQueue.main.async { [weak self] in
+                self?.showChatWindow()
             }
         }
         completionHandler()
+    }
+
+    // MARK: - Window
+
+    func windowWillClose(_ notification: Notification) {
+        if let w = notification.object as? NSWindow, w == chatWindow {
+            chatWindow = nil
+        }
     }
 }

@@ -86,6 +86,30 @@ struct SettingsView: View {
                         .overlay(Circle().stroke(.white.opacity(0.2)))
                 }
             }
+            Section("Chat bubbles") {
+                hueRow("Your messages",
+                       hue: $settings.userBubbleHue)
+                hueRow("Assistant",
+                       hue: $settings.assistantBubbleHue)
+                hueRow("Questions",
+                       hue: $settings.questionBubbleHue)
+                HStack {
+                    Text("Opacity")
+                    Slider(value: $settings.bubbleOpacity, in: 0.05...0.8)
+                    Text("\(Int(settings.bubbleOpacity * 100))%")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, alignment: .trailing)
+                }
+                HStack {
+                    Text("Corner")
+                    Slider(value: $settings.bubbleCornerRadius, in: 4...28)
+                    Text("\(Int(settings.bubbleCornerRadius))")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, alignment: .trailing)
+                }
+            }
             Section("Notifications") {
                 Toggle("Show banners", isOn: $settings.notifyEnabled)
                 Toggle("Play sound", isOn: $settings.soundEnabled)
@@ -125,5 +149,17 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    private func hueRow(_ label: String, hue: Binding<Double>) -> some View {
+        HStack {
+            Text(label)
+                .frame(width: 110, alignment: .leading)
+            Slider(value: hue, in: 0...1)
+            Circle()
+                .fill(Color(hue: hue.wrappedValue, saturation: 0.7, brightness: 0.95))
+                .frame(width: 18, height: 18)
+                .overlay(Circle().stroke(.white.opacity(0.2)))
+        }
     }
 }
