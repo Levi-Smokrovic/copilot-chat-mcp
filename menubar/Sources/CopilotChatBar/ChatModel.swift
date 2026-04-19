@@ -1,6 +1,5 @@
 import Foundation
 import SwiftUI
-import UserNotifications
 
 struct ChatMessage: Identifiable, Equatable {
     let id = UUID()
@@ -112,25 +111,36 @@ final class ChatModel: ObservableObject {
     }
 
     private func notify(for m: ChatMessage) {
-        let content = UNMutableNotificationContent()
+        // We used to go through UNUserNotificationCenter, but an
+        // ad-hoc-signed LSUIElement app never reliably gets the auth
+        // prompt on macOS, so banners silently drop. `osascript`'s
+        // `display notification` uses Script Editor's pre-authorized
+        // notification entitlement and Just Works™ for every user.
+        let title: String
+        let sound: String?
         switch m.kind {
-        case .question:
-            content.title = "Copilot is asking"
-            content.sound = .default
-        case .update:
-            content.title = "Copilot update"
-            // quieter — no sound for updates
-        case .normal:
-            content.title = "Copilot"
-            content.sound = .default
+        case .question: title = "Copilot is asking"; sound = "Glass"
+        case .update:   title = "Copilot update";    sound = nil
+        case .normal:   title = "Copilot";           sound = "Glass"
         }
-        content.body = m.text
-        let req = UNNotificationRequest(
-            identifier: UUID().uuidString,
-            content: content,
-            trigger: nil
-        )
-        UNUserNotificationCenter.current().add(req)
+        let body = m.text.count > 180
+            ? String(m.text.prefix(177)) + "…"
+            : m.text
+        func esc(_ s: String) -> String {
+            s.replacingOccurrences(of: "\\", with: "\\\\")
+             .replacingOccurrences(of: "\"", with: "\\\"")
+        }
+        var script = "display notification \"\(esc(body))\" with title \"\(esc(title))\""
+        if let sound { script += " sound name \"\(sound)\"" }
+
+        Task.detached {
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            proc.arguments = ["-e", script]
+            proc.standardOutput = Pipe()
+            proc.standardError = Pipe()
+            try? proc.run()
+        }
     }
 
     // MARK: - Outgoing
