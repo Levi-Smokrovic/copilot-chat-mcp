@@ -18,6 +18,8 @@ struct RootView: View {
             }
         }
         .frame(width: 400, height: 560)
+        .tint(settings.accentColor)
+        .preferredColorScheme(settings.colorScheme)
     }
 
     private var header: some View {
@@ -56,11 +58,39 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section("Appearance") {
+                Picker("Theme", selection: $settings.appearance) {
+                    Text("Auto").tag("auto")
+                    Text("Light").tag("light")
+                    Text("Dark").tag("dark")
+                }
+                .pickerStyle(.segmented)
+
+                Picker("Menu bar icon", selection: $settings.iconStyle) {
+                    Label("Bubbles",  systemImage: "bubble.left.and.bubble.right").tag("bubble")
+                    Label("Sparkles", systemImage: "sparkles").tag("sparkles")
+                    Label("Message",  systemImage: "message").tag("message")
+                }
+                .onChange(of: settings.iconStyle) { _, _ in
+                    model.onUnreadChanged?()
+                }
+
+                HStack {
+                    Text("Accent")
+                    Slider(value: $settings.accentHue, in: 0...1) {
+                        Text("Hue")
+                    }
+                    Circle()
+                        .fill(settings.accentColor)
+                        .frame(width: 20, height: 20)
+                        .overlay(Circle().stroke(.white.opacity(0.2)))
+                }
+            }
             Section("Notifications") {
                 Toggle("Show banners", isOn: $settings.notifyEnabled)
                 Toggle("Play sound", isOn: $settings.soundEnabled)
                     .disabled(!settings.notifyEnabled)
-                Toggle("Also notify on agent progress updates",
+                Toggle("Notify on agent progress updates",
                        isOn: $settings.notifyOnUpdates)
                     .disabled(!settings.notifyEnabled)
                 Toggle("Clicking a banner opens this window",

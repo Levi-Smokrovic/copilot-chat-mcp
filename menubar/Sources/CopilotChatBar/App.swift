@@ -57,9 +57,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate,
 
     private func refreshIcon() {
         guard let button = statusItem?.button else { return }
-        let name = model.hasUnread
-            ? "bubble.left.and.bubble.right.fill"
-            : "bubble.left.and.bubble.right"
+        let names = Settings.shared.iconSymbolName
+        let name = model.hasUnread ? names.unread : names.idle
         let img = NSImage(systemSymbolName: name, accessibilityDescription: "Copilot Chat")
         img?.isTemplate = true
         button.image = img
@@ -69,16 +68,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate,
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            showPopover()
+            guard let button = statusItem?.button else { return }
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            model.markRead()
+            refreshIcon()
         }
     }
 
+    /// Used by the notification-click handler. Performs a real click
+    /// on the status button so AppKit resolves the popover anchor the
+    /// same way it does for a user click — otherwise the popover ends
+    /// up floating at the top-left of the screen after the app becomes
+    /// active from the background.
     func showPopover() {
-        guard let button = statusItem?.button else { return }
-        NSApp.activate(ignoringOtherApps: true)
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        model.markRead()
-        refreshIcon()
+        guard let button = statusItem?.button, !popover.isShown else { return }
+        button.performClick(nil)
     }
 
     // MARK: - Notifications
@@ -97,7 +101,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate,
                                 withCompletionHandler completionHandler:
                                     @escaping () -> Void) {
         if Settings.shared.openPopoverOnNotificationClick {
-            DispatchQueue.main.async { [weak self] in
+            // Tiny delay so the status item finishes re-layout after the
+            // app becomes active; otherwise the popover can attach to a
+            // stale button frame and appear in the wrong spot.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
                 self?.showPopover()
             }
         }
