@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AppKit
 
 struct ChatMessage: Identifiable, Equatable {
     let id = UUID()
@@ -110,37 +111,24 @@ final class ChatModel: ObservableObject {
         }
     }
 
+    // Uses the legacy NSUserNotification API. Deprecated but still
+    // functional on macOS 26, and unlike UNUserNotificationCenter it
+    // requires no authorization prompt for an ad-hoc-signed menu-bar
+    // app. Clicks route back to this app (so the menu bar popover
+    // opens), unlike `osascript display notification` whose clicks
+    // go to Script Editor.
     private func notify(for m: ChatMessage) {
-        // We used to go through UNUserNotificationCenter, but an
-        // ad-hoc-signed LSUIElement app never reliably gets the auth
-        // prompt on macOS, so banners silently drop. `osascript`'s
-        // `display notification` uses Script Editor's pre-authorized
-        // notification entitlement and Just Works™ for every user.
         let title: String
-        let sound: String?
         switch m.kind {
-        case .question: title = "Copilot is asking"; sound = "Glass"
-        case .update:   title = "Copilot update";    sound = nil
-        case .normal:   title = "Copilot";           sound = "Glass"
+        case .question: title = "Copilot is asking"
+        case .update:   title = "Copilot update"
+        case .normal:   title = "Copilot"
         }
-        let body = m.text.count > 180
-            ? String(m.text.prefix(177)) + "…"
-            : m.text
-        func esc(_ s: String) -> String {
-            s.replacingOccurrences(of: "\\", with: "\\\\")
-             .replacingOccurrences(of: "\"", with: "\\\"")
-        }
-        var script = "display notification \"\(esc(body))\" with title \"\(esc(title))\""
-        if let sound { script += " sound name \"\(sound)\"" }
-
-        Task.detached {
-            let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-            proc.arguments = ["-e", script]
-            proc.standardOutput = Pipe()
-            proc.standardError = Pipe()
-            try? proc.run()
-        }
+        let n = NSUserNotification()
+        n.title = title
+        n.informativeText = m.text
+        if m.kind != .update { n.soundName = NSUserNotificationDefaultSoundName }
+        NSUserNotificationCenter.default.deliver(n)
     }
 
     // MARK: - Outgoing
