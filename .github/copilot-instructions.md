@@ -26,3 +26,29 @@ need to stop and reply in prose.
 For long-running work, call `send_update` occasionally so the user
 sees progress in the web UI / Telegram. It's non-blocking and also
 drains any queued btw messages.
+
+## CLAUDE.md — persistent project brain
+
+Authoritative project state lives at
+`~/.local/share/copilot-chat-mcp/CLAUDE.md` (tracked in the GitHub
+repo). It is the single source of truth that survives context /
+memory wipes.
+
+**At the start of every task**, read that file to rehydrate
+context — architecture, file layout, recent changes, open issues,
+gotchas, commands.
+
+**Whenever you change something meaningful**, update CLAUDE.md in
+the same commit: what was changed, why, what still needs doing,
+any new gotchas. Keep it concise and scannable (bullet lists,
+short sections). If you learn something non-obvious (a failure
+mode, a macOS quirk, a signing footgun), write it down there so
+future-you doesn't re-learn it.
+
+Sections to keep current:
+- Architecture overview
+- Repo layout / where things live
+- Build & install commands
+- Recent changes (reverse-chronological, short)
+- Known gotchas / things that bit us before
+- Open TODOs
