@@ -85,10 +85,11 @@ private struct MessageBubble: View {
             if msg.role == .user { Spacer(minLength: 40) }
             VStack(alignment: .leading, spacing: 3) {
                 metaLabel
-                Text(msg.text)
+                Text(linkified(msg.text))
                     .font(.system(size: 13))
                     .foregroundStyle(msg.kind == .update ? .secondary : .primary)
                     .textSelection(.enabled)
+                    .tint(.accentColor)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
@@ -99,6 +100,27 @@ private struct MessageBubble: View {
             )
             if msg.role == .assistant { Spacer(minLength: 40) }
         }
+    }
+
+    /// Detect URLs in the message and turn them into clickable links.
+    /// SwiftUI's `Text` renders `AttributedString` links natively.
+    private func linkified(_ text: String) -> AttributedString {
+        var attr = AttributedString(text)
+        let detector = try? NSDataDetector(
+            types: NSTextCheckingResult.CheckingType.link.rawValue
+        )
+        let ns = text as NSString
+        let range = NSRange(location: 0, length: ns.length)
+        detector?.enumerateMatches(in: text, options: [], range: range) { m, _, _ in
+            guard let m, let url = m.url else { return }
+            if let r = Range(m.range, in: text),
+               let ar = Range(r, in: attr) {
+                attr[ar].link = url
+                attr[ar].foregroundColor = .accentColor
+                attr[ar].underlineStyle = .single
+            }
+        }
+        return attr
     }
 
     private var tint: Color {
