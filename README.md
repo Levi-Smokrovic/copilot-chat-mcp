@@ -45,7 +45,7 @@ All three share the same conversation state.
 ## Install — server
 
 ```bash
-git clone https://github.com/<you>/copilot-chat-mcp.git
+git clone https://github.com/Levi-Smokrovic/copilot-chat-mcp.git
 cd copilot-chat-mcp
 python3 -m venv .venv
 source .venv/bin/activate
