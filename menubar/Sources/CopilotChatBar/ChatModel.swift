@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import AppKit
+import UserNotifications
 
 struct ChatMessage: Identifiable, Equatable {
     let id = UUID()
@@ -138,13 +139,19 @@ final class ChatModel: ObservableObject {
         case .update:   title = "Copilot update"
         case .normal:   title = "Copilot"
         }
-        let n = NSUserNotification()
-        n.title = title
-        n.informativeText = m.text
+
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body  = m.text
         if s.soundEnabled && m.kind != .update {
-            n.soundName = NSUserNotificationDefaultSoundName
+            content.sound = .default
         }
-        NSUserNotificationCenter.default.deliver(n)
+        let req = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(req, withCompletionHandler: nil)
     }
 
     // MARK: - Outgoing

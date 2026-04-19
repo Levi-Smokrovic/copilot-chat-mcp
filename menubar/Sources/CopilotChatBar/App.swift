@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UserNotifications
 
 /// Menu-bar app built on AppKit's NSStatusItem / NSPopover. SwiftUI's
 /// `MenuBarExtra` looked nicer on paper but its click handling is fragile
@@ -18,14 +19,16 @@ struct CopilotChatBarApp {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate,
-                         @preconcurrency NSUserNotificationCenterDelegate,
+                         @preconcurrency UNUserNotificationCenterDelegate,
                          NSPopoverDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private let model = ChatModel()
 
     func applicationDidFinishLaunching(_: Notification) {
-        NSUserNotificationCenter.default.delegate = self
+        let center = UNUserNotificationCenter.current()
+        center.delegate = self
+        center.requestAuthorization(options: [.alert, .sound]) { _, _ in }
 
         // Popover
         popover = NSPopover()
@@ -80,16 +83,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate,
 
     // MARK: - Notifications
 
-    func userNotificationCenter(_ center: NSUserNotificationCenter,
-                                shouldPresent notification: NSUserNotification) -> Bool {
-        true
+    // Show banners even when our app is frontmost.
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler:
+                                    @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound])
     }
 
-    func userNotificationCenter(_ center: NSUserNotificationCenter,
-                                didActivate notification: NSUserNotification) {
-        guard Settings.shared.openPopoverOnNotificationClick else { return }
-        DispatchQueue.main.async { [weak self] in
-            self?.showPopover()
+    // Click/tap on banner.
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler:
+                                    @escaping () -> Void) {
+        if Settings.shared.openPopoverOnNotificationClick {
+            DispatchQueue.main.async { [weak self] in
+                self?.showPopover()
+            }
         }
+        completionHandler()
     }
 }
