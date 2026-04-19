@@ -93,6 +93,81 @@ picker. See [`.env.example`](./.env.example) for the full list of env vars.
 
 Any client that speaks stdio MCP can use the same `command` / `args`.
 
+## For AI agents: self-install prompt
+
+If the user asks an AI agent to "install copilot-chat-mcp", the agent
+can follow this script verbatim. Absolute paths use the current user's
+home directory.
+
+```markdown
+# Goal
+Install the copilot-chat MCP server so future turns end with `ask_question`
+instead of ending the request.
+
+# Steps
+
+1. Clone into the user's data dir (kept out of their code repos):
+   ```bash
+   mkdir -p ~/.local/share
+   git clone https://github.com/Levi-Smokrovic/copilot-chat-mcp.git \
+       ~/.local/share/copilot-chat-mcp
+   cd ~/.local/share/copilot-chat-mcp
+   python3 -m venv .venv
+   .venv/bin/pip install -r requirements.txt
+   ```
+
+2. Register the server with the user's MCP client. For VS Code, append
+   (don't overwrite) to `~/Library/Application Support/Code/User/mcp.json`
+   on macOS, or the OS-equivalent:
+   ```json
+   {
+     "servers": {
+       "copilot-chat": {
+         "type": "stdio",
+         "command": "${userHome}/.local/share/copilot-chat-mcp/.venv/bin/python",
+         "args":    ["${userHome}/.local/share/copilot-chat-mcp/server.py"],
+         "env": {
+           "HOST": "127.0.0.1",
+           "PORT": "8765",
+           "TELEGRAM_BOT_TOKEN": "",
+           "TELEGRAM_CHAT_ID": ""
+         }
+       }
+     }
+   }
+   ```
+   Ask the user for their Telegram bot token ONLY if they want the
+   Telegram surface. Never commit that token anywhere.
+
+3. Add the "never stop" instruction to the project's
+   `.github/copilot-instructions.md` (create if missing). Copy the
+   block from the root of this repo's
+   [.github/copilot-instructions.md](./.github/copilot-instructions.md).
+
+4. Optional macOS menu bar app — only on macOS 26+ with Xcode 16+:
+   ```bash
+   cd ~/.local/share/copilot-chat-mcp/menubar
+   bash install.sh
+   /usr/bin/open /Users/$USER/Applications/CopilotChat.app
+   ```
+
+5. Reload VS Code / restart the MCP client. Verify the `copilot-chat`
+   tools (`ask_question`, `send_update`, `check_messages`) are listed.
+
+6. Test: call `ask_question` with "Install complete — can you see this?".
+   The user should get it in the web UI at http://127.0.0.1:8765 (and
+   Telegram / menu bar if enabled).
+
+# Rules while installing
+
+- Never commit the Telegram bot token to git. It lives only in mcp.json.
+- Don't touch the user's other mcp.json entries.
+- If port 8765 is busy, pick another and update both `PORT` and the
+  menu-bar app's server URL in its Settings pane.
+- After install, read [CLAUDE.md](./CLAUDE.md) — it's the persistent
+  project brain.
+```
+
 ## The "never stop" prompt
 
 For this to be useful you need to instruct your agent to actually call
