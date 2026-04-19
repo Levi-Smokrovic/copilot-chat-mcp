@@ -130,6 +130,8 @@ launchctl kickstart -k "gui/$(id -u)/io.github.copilot-chat-mcp.menubar"
 
 ## Recent changes (reverse chronological)
 
+- URLs in chat messages are now auto-linkified via `NSDataDetector`
+  + `AttributedString` so they render clickable + underlined.
 - Banner clicks now open a standalone floating `NSWindow` instead of
   trying to anchor a popover to the status button. Added "Chat bubbles"
   settings section: per-role hue sliders (you / assistant / questions),
