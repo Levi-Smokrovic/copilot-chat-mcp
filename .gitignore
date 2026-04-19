@@ -1,0 +1,17 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.env
+
+# Swift / Xcode
+menubar/.build/
+menubar/.swiftpm/
+menubar/Package.resolved
+*.xcuserdatad/
+
+# macOS
+.DS_Store
+
+# Secrets / local configs that tend to hold tokens
+.vscode/mcp.json
