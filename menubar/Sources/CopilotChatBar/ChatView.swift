@@ -7,8 +7,6 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider().opacity(0.3)
             messagesList
             composer
         }
@@ -17,24 +15,6 @@ struct ChatView: View {
             model.markRead()
             inputFocused = true
         }
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(model.connected ? Color.green : Color.orange)
-                .frame(width: 8, height: 8)
-            Text("Copilot Chat")
-                .font(.headline)
-            Spacer()
-            Text(model.connected ? "connected" : "reconnecting…")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
     }
 
     // MARK: - Messages

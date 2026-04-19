@@ -17,14 +17,17 @@ struct ChatMessage: Identifiable, Equatable {
 final class ChatModel: ObservableObject {
     @Published var messages: [ChatMessage] = []
     @Published var connected: Bool = false
-    @Published var hasUnread: Bool = false
+    @Published var hasUnread: Bool = false {
+        didSet { onUnreadChanged?() }
+    }
+
+    /// Hook used by the AppKit-side AppDelegate to repaint the status
+    /// bar icon. Kept here so the model drives it without an import.
+    var onUnreadChanged: (() -> Void)?
 
     private var socket: URLSessionWebSocketTask?
     private let session: URLSession
     private var reconnectTask: Task<Void, Never>?
-
-    // Matches the MCP server defaults (see server.py).
-    private let wsURL = URL(string: "ws://127.0.0.1:8765/ws")!
 
     init() {
         let cfg = URLSessionConfiguration.default
@@ -35,7 +38,20 @@ final class ChatModel: ObservableObject {
 
     func markRead() { hasUnread = false }
 
+    func clearHistory() {
+        messages.removeAll()
+    }
+
+    func reconnect() {
+        scheduleReconnect()
+    }
+
     // MARK: - WebSocket lifecycle
+
+    private var wsURL: URL {
+        URL(string: Settings.shared.serverURL)
+            ?? URL(string: "ws://127.0.0.1:8765/ws")!
+    }
 
     private func connect() {
         reconnectTask?.cancel()
@@ -111,13 +127,11 @@ final class ChatModel: ObservableObject {
         }
     }
 
-    // Uses the legacy NSUserNotification API. Deprecated but still
-    // functional on macOS 26, and unlike UNUserNotificationCenter it
-    // requires no authorization prompt for an ad-hoc-signed menu-bar
-    // app. Clicks route back to this app (so the menu bar popover
-    // opens), unlike `osascript display notification` whose clicks
-    // go to Script Editor.
     private func notify(for m: ChatMessage) {
+        let s = Settings.shared
+        guard s.notifyEnabled else { return }
+        if m.kind == .update && !s.notifyOnUpdates { return }
+
         let title: String
         switch m.kind {
         case .question: title = "Copilot is asking"
@@ -127,7 +141,9 @@ final class ChatModel: ObservableObject {
         let n = NSUserNotification()
         n.title = title
         n.informativeText = m.text
-        if m.kind != .update { n.soundName = NSUserNotificationDefaultSoundName }
+        if s.soundEnabled && m.kind != .update {
+            n.soundName = NSUserNotificationDefaultSoundName
+        }
         NSUserNotificationCenter.default.deliver(n)
     }
 
